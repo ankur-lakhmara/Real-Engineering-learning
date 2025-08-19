@@ -20,7 +20,6 @@ const storage = multer.diskStorage({
     }
 });
 
-
 const upload = multer({storage:storage});
 
 
@@ -34,5 +33,5 @@ app.post('/upload', upload.single('avatar'), function (req,res,next){
 })
 
 app.listen((8080),()=>{
-    console.log('server is running on port 8080');
+    console.log('server is running on port 800');
 });

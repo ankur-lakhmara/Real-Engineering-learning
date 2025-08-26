@@ -5,14 +5,15 @@ const path = require('path');
 const AWS = require('aws-sdk');
 require('dotenv').config();
 
+
 //implementing redis
 const {createClient} = require('redis');
 const {v4: uuidv4} = require('uuid');
+const fileId = uuidv4();
 const redisClient = createClient();
-redisClient.connect();
+// redisClient.connect();
 
-
-
+const metadataStore = {};
 const S3 = new AWS.S3({
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
@@ -39,29 +40,41 @@ app.get('/',(req,res)=>{
 
 app.post('/upload', upload.single('avatar'), async function (req, res, next) {
     const file = req.file;
-    console.log(req.file);
+    // console.log(req.file);
     const params = {
-        Bucket: process.env.AWS_BUCKET_NAME,
+        Bucket: process.env.S3_BUCKET,
         Key: Date.now() + '-' + file.originalname,
         Body: file.buffer,
         ContentType: file.mimetype
     }
 
     try {
-        console.log(S3);
+        // console.log(S3);
         const data = await S3.upload(params).promise();
-        res.json({
-            message: 'Upload success',
-            s3Url: data.Location,
-            key: data.key,
-            fileName: file.originalname,
-            size: file.size,
-            type: file.mimeType,
-            uploadedAt: new Date()
-        });
+         metadataStore[fileId] = {
+            id: fileId,
+            s3Url : data.Location,
+            key : data.Key,
+            fileName : file.originalname,
+            size : file.size,
+            type : file.mimeType,
+            uploadedAt : new Date().toISOString(),
+
+        }
+        // console.log(metadataStore);
+        res.json(metadataStore[fileId]);
     } catch (e) {
         console.log(e);
     }
+});
+
+app.get('/files/:id',(req,res)=>{
+    const {id} = req.params;
+    const metadata = metadataStore[id];
+    if(metadata){
+        return res.json(metadata);
+    }
+    return res.status(404).json({error: 'file not found'});
 })
 
 app.listen((8080),()=>{
